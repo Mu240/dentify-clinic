@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Practice Hub + AI Receptionist (Demo)</title>
+<style>
+:root{--bg:#f4f6fa;--card:#fff;--ink:#0f172a;--mute:#64748b;--line:#e2e8f0;--brand:#2563eb;--ok:#059669;--warn:#d97706;--bad:#dc2626}
+*{box-sizing:border-box}body{margin:0;font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+header{display:flex;align-items:center;gap:18px;padding:10px 20px;background:#0f172a;color:#fff}
+header h1{font-size:16px;margin:0}header .badge{background:#f59e0b;color:#111;border-radius:99px;padding:2px 9px;font-size:11px;font-weight:700}
+nav{display:flex;gap:4px;margin-left:12px}nav button{background:none;border:0;color:#cbd5e1;padding:8px 12px;border-radius:8px;cursor:pointer;font-size:14px}
+nav button.on,nav button:hover{background:#1e293b;color:#fff}
+.layout{display:grid;grid-template-columns:1fr 370px;gap:16px;padding:16px;align-items:start}
+@media(max-width:1000px){.layout{grid-template-columns:1fr}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:14px}
+.stat b{display:block;font-size:26px}.stat span{color:var(--mute);font-size:12px}
+h2{margin:0 0 10px;font-size:16px}table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line)}
+th{font-size:12px;color:var(--mute);text-transform:uppercase;letter-spacing:.04em}tr.click{cursor:pointer}tr.click:hover{background:#f8fafc}
+button.btn,.btn{background:var(--brand);color:#fff;border:0;border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px}
+.btn.alt{background:#e2e8f0;color:#0f172a}.btn.ok{background:var(--ok)}.btn.bad{background:var(--bad)}.btn.sm{padding:4px 9px;font-size:12px}
+input,select,textarea{border:1px solid var(--line);border-radius:8px;padding:8px;font:inherit;background:#fff;max-width:100%}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.pill{display:inline-block;border-radius:99px;padding:1px 9px;font-size:11px;font-weight:600;background:#e2e8f0}
+.pill.booked,.pill.paid,.pill.completed{background:#d1fae5;color:#065f46}.pill.cancelled,.pill.no_show,.pill.unpaid,.pill.abandoned{background:#fee2e2;color:#991b1b}
+.pill.info,.pill.rescheduled{background:#dbeafe;color:#1e40af}.pill.transferred,.pill.message_taken{background:#fef3c7;color:#92400e}
+.bar{height:10px;border-radius:5px;background:var(--brand)}.save{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;text-align:center}
+.save div{background:#f1f5f9;border-radius:10px;padding:12px}.save b{font-size:22px;display:block}
+.page{display:none}.page.on{display:block}
+dialog{border:0;border-radius:14px;padding:20px;min-width:340px;box-shadow:0 20px 60px #0005}dialog::backdrop{background:#0008}
+dialog label{display:block;margin:8px 0 3px;color:var(--mute);font-size:12px}dialog select,dialog input{width:100%}dialog .row input,dialog .row select{width:auto}
+/* AI panel */
+#ai{position:sticky;top:12px;display:flex;flex-direction:column;height:calc(100vh - 90px);min-height:480px;padding:0;overflow:hidden}
+#ai .top{padding:12px 14px;border-bottom:1px solid var(--line)}#ai .top b{font-size:15px}
+#status{font-size:12px;color:var(--mute)}.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#94a3b8;margin-right:5px}.dot.live{background:var(--ok);animation:p 1.2s infinite}
+@keyframes p{50%{opacity:.35}}
+#log{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:8px;background:#f8fafc}
+.msg{max-width:88%;padding:8px 11px;border-radius:12px;white-space:pre-wrap}.msg.agent{background:#fff;border:1px solid var(--line);align-self:flex-start}
+.msg.me{background:var(--brand);color:#fff;align-self:flex-end}.msg.sys{align-self:center;background:#fef3c7;color:#78350f;font-size:12px;text-align:center}
+#ai .ctl{padding:10px;border-top:1px solid var(--line)}#ai .ctl .row{margin:0 0 8px}#txt{flex:1;min-width:0}
+.thr{padding:9px 10px;border:1px solid var(--line);border-radius:10px;margin-bottom:6px;cursor:pointer;background:#fff}.thr.on,.thr:hover{background:#eff6ff;border-color:#bfdbfe}
+.inb{display:grid;grid-template-columns:270px 1fr;gap:14px}@media(max-width:800px){.inb{grid-template-columns:1fr}}
+#tmsgs{display:flex;flex-direction:column;gap:6px;max-height:48vh;overflow:auto;background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:8px}
+.bub{max-width:82%;padding:7px 10px;border-radius:12px;white-space:pre-wrap}.bub.customer{background:#fff;border:1px solid var(--line);align-self:flex-start}
+.bub.bot{background:#dbeafe;align-self:flex-end}.bub.staff{background:var(--brand);color:#fff;align-self:flex-end}.bub small{display:block;opacity:.65;font-size:10px}
+.links code{background:#f1f5f9;padding:2px 6px;border-radius:6px;font-size:12px;word-break:break-all}
+.teeth{display:grid;grid-template-columns:repeat(16,1fr);gap:3px;margin:6px 0}.tooth{aspect-ratio:1;border:1px solid #cbd5e1;border-radius:6px;font-size:10px;padding:0;cursor:pointer;background:#fff}
+.tooth.sel{outline:2px solid var(--ink)}.tooth.c-cavity{background:#fecaca}.tooth.c-filled{background:#bfdbfe}.tooth.c-crown{background:#ddd6fe}.tooth.c-root_canal{background:#fed7aa}
+.tooth.c-implant{background:#99f6e4}.tooth.c-missing{background:#e2e8f0;border-style:dashed;color:#94a3b8}.tooth.c-watch{background:#fef08a}
+.hint{font-size:12px;color:var(--mute)}.fc{font-size:13px}.fc-event{cursor:pointer}
+</style>
+<link rel="stylesheet" href="/static/pm.css">
+</head>
+<body>
+<header>
+  <h1 id="pname">Practice Hub</h1><span class="badge">DEMO</span>
+  <nav id="nav">
+    <button data-p="dash" class="on">Dashboard</button><button data-p="cal">Calendar</button>
+    <button data-p="pat">Patients</button><button data-p="bill">Billing</button><button data-p="claims">Insurance</button>
+    <button data-p="inbox">Social Inbox <span id="ibadge" class="pill unpaid" style="display:none"></span></button><button data-p="msg">Messages</button><button data-p="calls">AI Calls</button>
+  </nav>
+</header>
+
+<div class="layout">
+<main>
+  <section id="dash" class="page on">
+    <div class="card" id="huddle" style="margin-bottom:14px"></div>
+    <div class="grid" id="kpis"></div>
+    <div class="grid" id="kpi2" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))"></div>
+    <div class="grid" id="stats"></div>
+    <div class="grid" style="grid-template-columns:1fr 1fr">
+      <div class="card"><h2>Monthly cost: today vs. this platform</h2>
+        <div class="save"><div><span class="hint">Mango + Curve today</span><b>$700</b></div>
+          <div><span class="hint">This platform</span><b style="color:var(--ok)">$299</b></div>
+          <div><span class="hint">Annual savings</span><b style="color:var(--ok)">$4,812</b></div></div>
+        <p class="hint">57% lower, no per-seat fees, and the practice owns the code and the data.</p></div>
+      <div class="card"><h2>Appointments by type (90 days)</h2><div id="bytype"></div></div>
+    </div>
+  </section>
+
+  <section id="cal" class="page"><div class="card">
+    <div class="row"><b>Schedule</b><select id="provFilter"></select>
+      <span class="hint">Drag to move. Click a free slot to book. Click an appointment for actions. Calls and chats booked by the AI show up here live.</span></div>
+    <div id="calendar"></div></div></section>
+
+  <section id="pat" class="page"><div class="card">
+    <div class="row"><input id="psearch" placeholder="Search name or phone"><button class="btn" id="addPat">+ New patient</button></div>
+    <table><thead><tr><th>Name</th><th>Phone</th><th>Last visit</th><th>Next appointment</th></tr></thead><tbody id="ptbody"></tbody></table></div></section>
+
+  <section id="bill" class="page"><div class="card">
+    <div class="row"><button class="btn" id="addInv">+ New invoice</button></div>
+    <table><thead><tr><th>#</th><th>Patient</th><th>Description</th><th>Amount</th><th>Status</th><th></th></tr></thead><tbody id="invbody"></tbody></table></div></section>
+
+  <section id="claims" class="page"><div class="card">
+    <div class="row"><h2 style="margin:0">Insurance claims</h2><select id="claimStatus"><option value="">All claims</option><option value="draft">Draft</option><option value="submitted">Submitted</option><option value="paid">Paid</option><option value="denied">Denied</option></select>
+      <span class="hint">Finishing a treatment raises the claim for the insurance share and bills the patient only their share.</span></div>
+    <div class="grid" id="claimStats"></div>
+    <table><thead><tr><th>#</th><th>Patient</th><th>Procedure</th><th>Carrier</th><th>Billed</th><th>Expected</th><th>Paid</th><th>Status</th><th></th></tr></thead><tbody id="claimbody"></tbody></table></div></section>
+
+  <section id="inbox" class="page"><div class="card">
+    <h2>Social inbox <span class="hint">Instagram · Facebook · LinkedIn · anything that can send a webhook</span></h2>
+    <div id="socstat" class="hint links" style="margin-bottom:12px"></div>
+    <div class="inb">
+      <div id="threads"><p class="hint">No conversations yet.</p></div>
+      <div id="threadpane"><p class="hint">Select a conversation. The AI books appointments straight into the calendar; reply yourself to take over (the bot goes quiet until you hand it back).</p></div>
+    </div></div></section>
+
+  <section id="msg" class="page"><div class="card">
+    <div class="row"><button class="btn" id="runRem">Run reminders (48h + 2h)</button>
+      <button class="btn alt" id="runRec">Run recall campaign (6+ months)</button><span id="msgres" class="hint"></span></div>
+    <p class="hint">Demo outbox: messages are stored here instead of being sent. In production the same function sends real SMS/email.</p>
+    <table><thead><tr><th>When</th><th>To</th><th>Type</th><th>Message</th></tr></thead><tbody id="msgbody"></tbody></table></div></section>
+
+  <section id="calls" class="page"><div class="card"><h2>AI receptionist call &amp; chat log</h2><div id="callbody"></div></div></section>
+</main>
+
+<aside class="card" id="ai">
+  <div class="top"><b>AI Receptionist</b><div id="status"><span class="dot"></span><span id="stext">Idle</span></div></div>
+  <div id="log"><div class="msg sys">Press <b>Start voice call</b> and talk, or use text chat. Try: "I'd like to book a cleaning tomorrow."</div></div>
+  <div class="ctl">
+    <div class="row">
+      <button class="btn ok" id="callBtn">Start voice call</button>
+      <button class="btn alt" id="chatBtn">Text chat</button>
+      <button class="btn bad" id="endBtn" style="display:none">End</button>
+      <label class="hint"><input type="checkbox" id="speakToggle" checked> speak replies</label></div>
+    <div class="row" style="margin:0"><input id="txt" placeholder="Type a message…" disabled><button class="btn" id="send" disabled>Send</button><button class="btn alt" id="mic" disabled title="Talk">Mic</button></div>
+    <div class="hint" id="vnote"></div>
+  </div>
+</aside>
+</div>
+
+<dialog id="dlg"></dialog>
+<script src="/static/vendor/fullcalendar.min.js"></script>
+<script>
+const $=s=>document.querySelector(s), esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+async function api(path,opts={}){const r=await fetch(path,{headers:{'Content-Type':'application/json'},...opts,body:opts.body?JSON.stringify(opts.body):undefined});
+  const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.detail||r.statusText);return j}
+const when=s=>s?new Date(s).toLocaleString([],{weekday:'short',month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):'—';
+const phone=d=>d&&d.length===10?`(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}`:(d||'');
+const naive=d=>{const p=n=>String(n).padStart(2,'0');return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`};
+let CFG={types:{}}, PROV=[], page='dash', cal=null;
+
+// ---------- navigation ----------
+function show(p){page=p;document.querySelectorAll('.page').forEach(e=>e.classList.toggle('on',e.id===p));
+  document.querySelectorAll('#nav button').forEach(b=>b.classList.toggle('on',b.dataset.p===p));location.hash=p;load();}
+$('#nav').onclick=e=>{if(e.target.dataset.p)show(e.target.dataset.p)};
+function load(){({dash:loadDash,cal:loadCal,pat:loadPat,bill:loadBill,msg:loadMsg,calls:loadCalls,inbox:loadInbox,claims:loadClaims})[page]()}
+
+// ---------- dashboard ----------
+async function loadDash(){const r=await api('/api/reports');
+  const S=[['Appointments next 7 days',r.upcoming_7d],['New patients (30d)',r.new_patients_30d],['No-show rate (90d)',r.no_show_rate+'%'],
+    ['Calls & chats handled by AI (30d)',r.calls_30d],['Appointments booked by AI (30d+)',r.ai_booked_total],['Booked from social & web form (30d)',r.social_booked_30d],['Unread social chats',r.unread_inbox],['Revenue collected (30d)','$'+Math.round(r.revenue_30d).toLocaleString()],['Outstanding','$'+Math.round(r.outstanding).toLocaleString()]];
+  $('#stats').innerHTML=S.map(([l,v])=>`<div class="card stat"><b>${v}</b><span>${l}</span></div>`).join('');
+  const max=Math.max(1,...r.by_type.map(t=>t.n));
+  $('#bytype').innerHTML=r.by_type.map(t=>`<div style="margin:6px 0"><div class="hint">${esc(CFG.types[t.type]?.name||t.type)} (${t.n})</div><div class="bar" style="width:${100*t.n/max}%;background:${CFG.types[t.type]?.color||'#2563eb'}"></div></div>`).join('')}
+
+// ---------- calendar ----------
+function loadCal(){
+  if(cal){cal.refetchEvents();return}
+  cal=new FullCalendar.Calendar($('#calendar'),{initialView:'timeGridWeek',height:'auto',hiddenDays:[0],allDaySlot:false,slotMinTime:'09:00:00',slotMaxTime:'17:00:00',
+    slotDuration:'00:30:00',nowIndicator:true,editable:true,selectable:true,eventOverlap:true,
+    headerToolbar:{left:'prev,next today',center:'title',right:'timeGridWeek,timeGridDay,dayGridMonth'},
+    events:async(info,ok,fail)=>{try{const a=await api(`/api/appointments?start=${encodeURIComponent(info.startStr)}&end=${encodeURIComponent(info.endStr)}`);
+      const f=$('#provFilter').value;ok(a.filter(x=>!f||x.provider_id==f).map(x=>({id:x.id,start:x.start,end:x.end,
+        title:`${x.patient_name} · ${CFG.types[x.type]?.name||x.type}${x.source.startsWith('ai')?' 🤖':''}${x.source.startsWith('web_')?' 📱':''}`,
+        backgroundColor:CFG.types[x.type]?.color,borderColor:x.provider_color,classNames:x.status==='completed'?['done']:[],extendedProps:x})))}catch(e){fail(e)}},
+    eventDrop:async i=>{try{await api('/api/appointments/'+i.event.id,{method:'PATCH',body:{start:naive(i.event.start)}})}catch(e){alert(e.message);i.revert()}cal.refetchEvents()},
+    eventClick:i=>apptDialog(i.event.extendedProps),
+    select:i=>newApptDialog(naive(i.start)),
+  });cal.render()}
+$('#provFilter').onchange=()=>cal&&cal.refetchEvents();
+function apptDialog(a){const d=$('#dlg');
+  d.innerHTML=`<h2>${esc(a.patient_name)}</h2><p>${esc(CFG.types[a.type]?.name)} with ${esc(a.provider_name)}<br>${when(a.start)}<br>${phone(a.patient_phone)} · <span class="pill ${a.status}">${a.status}</span> · source: ${esc(a.source)}</p>
+  <div class="row"><button class="btn ok" data-s="completed">Mark completed</button><button class="btn alt" data-s="no_show">No-show</button><button class="btn bad" data-s="cancelled">Cancel</button><button class="btn alt" id="x">Close</button></div>
+  <p class="hint">Completing a visit sends the Google-review invite automatically.</p>`;
+  d.onclick=async e=>{if(e.target.id==='x')return d.close();const s=e.target.dataset.s;if(!s)return;
+    await api('/api/appointments/'+a.id,{method:'PATCH',body:{status:s}});d.close();load()};d.showModal()}
+async function newApptDialog(start){const pts=await api('/api/patients');const d=$('#dlg');
+  d.innerHTML=`<h2>New appointment</h2><label>Patient</label><select id="np">${pts.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select>
+  <label>Type</label><select id="nt">${Object.entries(CFG.types).map(([k,v])=>`<option value="${k}">${esc(v.name)} (${v.minutes} min)</option>`).join('')}</select>
+  <label>Provider</label><select id="nv"><option value="">Any available</option>${PROV.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select>
+  <label>Start</label><input id="ns" type="datetime-local" value="${start}"><p id="nerr" style="color:var(--bad)"></p>
+  <div class="row"><button class="btn" id="ok">Book</button><button class="btn alt" id="x">Cancel</button></div>`;
+  d.onclick=async e=>{if(e.target.id==='x')return d.close();if(e.target.id!=='ok')return;
+    try{await api('/api/appointments',{method:'POST',body:{patient_id:+$('#np').value,type:$('#nt').value,start:$('#ns').value,provider_id:$('#nv').value?+$('#nv').value:null}});d.close();load()}
+    catch(err){$('#nerr').textContent=err.message}};d.showModal()}
+
+// ---------- patients ----------
+async function loadPat(){const q=$('#psearch').value;const r=await api('/api/patients?q='+encodeURIComponent(q));
+  $('#ptbody').innerHTML=r.map(p=>`<tr class="click" data-id="${p.id}"><td>${esc(p.name)}</td><td>${phone(p.phone)}</td><td>${when(p.last_visit)}</td><td>${when(p.next_appt)}</td></tr>`).join('')}
+$('#psearch').oninput=loadPat;
+$('#ptbody').onclick=e=>{const tr=e.target.closest('tr');if(tr)patientDialog(tr.dataset.id)};
+const TOOTH_CONDS=['healthy','watch','cavity','filled','crown','root_canal','implant','missing'];
+$('#addPat').onclick=()=>{const d=$('#dlg');d.innerHTML=`<h2>New patient</h2><label>Name</label><input id="pn"><label>Phone</label><input id="pp" placeholder="(555) 123-4567"><label>Email (for confirmations)</label><input id="pe"><p id="perr" style="color:var(--bad)"></p>
+  <div class="row"><button class="btn" id="ok">Save</button><button class="btn alt" id="x">Cancel</button></div>`;
+  d.onclick=async e=>{if(e.target.id==='x')return d.close();if(e.target.id!=='ok')return;
+    try{await api('/api/patients',{method:'POST',body:{name:$('#pn').value,phone:$('#pp').value,email:$('#pe').value}});d.close();loadPat()}catch(err){$('#perr').textContent=err.message}};d.showModal()};
+
+// ---------- billing ----------
+async function loadBill(){const r=await api('/api/invoices');
+  $('#invbody').innerHTML=r.map(i=>`<tr><td>${i.id}</td><td>${esc(i.patient_name)}</td><td>${esc(i.description)}</td><td>$${i.amount.toFixed(2)}</td><td><span class="pill ${i.status}">${i.status}</span></td>
+   <td>${i.status==='unpaid'?`<button class="btn sm ok" data-pay="${i.id}">Mark paid</button> <a class="btn sm alt" target="_blank" href="/pay/${i.id}">Pay link</a>`:''}</td></tr>`).join('')}
+$('#invbody').onclick=async e=>{if(e.target.dataset.pay){await api(`/api/invoices/${e.target.dataset.pay}/pay`,{method:'POST'});loadBill()}};
+$('#addInv').onclick=async()=>{const pts=await api('/api/patients'),d=$('#dlg');
+  d.innerHTML=`<h2>New invoice</h2><label>Patient</label><select id="ip">${pts.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('')}</select><label>Description</label><input id="id" value="Cleaning"><label>Amount ($)</label><input id="ia" type="number" value="150">
+  <div class="row" style="margin-top:12px"><button class="btn" id="ok">Create</button><button class="btn alt" id="x">Cancel</button></div>`;
+  d.onclick=async e=>{if(e.target.id==='x')return d.close();if(e.target.id!=='ok')return;await api('/api/invoices',{method:'POST',body:{patient_id:+$('#ip').value,description:$('#id').value,amount:+$('#ia').value}});d.close();loadBill()};d.showModal()};
+
+// ---------- social inbox ----------
+let curThread=null;
+const CH={instagram:'Instagram',facebook:'Facebook',linkedin:'LinkedIn',other:'Other'};
+async function loadInbox(){
+  const [st,ts]=await Promise.all([api('/api/social/status'),api('/api/inbox')]);
+  const base=st.public_url||location.origin;
+  $('#socstat').innerHTML=`<b>Booking links for your bios:</b> `+['instagram','facebook','linkedin'].map(c=>`${CH[c]} <code>${esc(base+'/book?src='+c)}</code>`).join(' · ')
+   +`<br>Instagram/Facebook replies: ${st.meta_can_reply?'<b style="color:var(--ok)">connected</b>':'<b>not connected</b> (set META_PAGE_TOKEN; chats still land here)'} · webhook signature check: ${st.meta_signature_check?'on':'<b style="color:var(--bad)">off</b>'} · LinkedIn/Zapier endpoint: ${st.inbound_endpoint?'on':'off'}`;
+  $('#threads').innerHTML=ts.map(t=>`<div class="thr ${t.id===curThread?'on':''}" data-id="${t.id}"><b>${esc(t.patient_name||t.sender_name||('New '+CH[t.channel]+' contact'))}</b>
+    <span class="pill">${CH[t.channel]||t.channel}</span>${t.unread?` <span class="pill unpaid">${t.unread}</span>`:''}${t.handoff?' <span class="pill transferred">you</span>':''}
+    <div class="hint">${esc((t.last_body||'').slice(0,70))}</div></div>`).join('')||'<p class="hint">No conversations yet.</p>';
+  if(curThread)paintThread(false);
+  badge(ts)}
+function badge(ts){const n=ts.reduce((a,t)=>a+t.unread,0),b=$('#ibadge');b.style.display=n?'':'none';b.textContent=n}
+$('#threads').onclick=e=>{const t=e.target.closest('.thr');if(t){curThread=+t.dataset.id;paintThread(true)}};
+async function paintThread(full){
+  const r=await api('/api/inbox/'+curThread);
+  if(full||!$('#tmsgs')){
+    $('#threadpane').innerHTML=`<div class="row"><b>${esc(CH[r.thread.channel])} chat</b><span id="bot" class="hint"></span><button class="btn sm alt" id="tog"></button></div>
+      <div id="tmsgs"></div><div class="row" style="margin:0"><input id="rtxt" style="flex:1;min-width:0" placeholder="Reply as staff (pauses the AI)…"><button class="btn" id="rsend">Send</button></div><p class="hint" id="rres"></p>`;
+    $('#tog').onclick=async()=>{const on=!r.thread.handoff;await api(`/api/inbox/${curThread}/handoff`,{method:'POST',body:{on}});paintThread(true);loadInbox()};
+    const send=async()=>{const v=$('#rtxt').value.trim();if(!v)return;$('#rtxt').value='';
+      const o=await api(`/api/inbox/${curThread}/reply`,{method:'POST',body:{text:v}});
+      $('#rres').textContent=o.delivered?'Sent.':'Saved in the inbox but not delivered: '+o.error;paintThread(true);loadInbox()};
+    $('#rsend').onclick=send;$('#rtxt').onkeydown=e=>{if(e.key==='Enter')send()};
+  }
+  $('#bot').textContent=r.thread.handoff?'AI paused: you are handling this chat':'AI is replying automatically';
+  $('#tog').textContent=r.thread.handoff?'Hand back to AI':'Take over';
+  const box=$('#tmsgs'),atEnd=box.scrollHeight-box.scrollTop-box.clientHeight<40||full;
+  box.innerHTML=r.messages.map(m=>`<div class="bub ${m.author}"><small>${m.author==='customer'?'Customer':m.author==='bot'?'AI':'Staff'} · ${when(m.created_at)}${m.direction==='out'&&!m.delivered?' · not delivered':''}</small>${esc(m.body)}</div>`).join('');
+  if(atEnd)box.scrollTop=1e9}
+setInterval(async()=>{if(document.querySelector('dialog[open]'))return;
+  try{if(page==='inbox')await loadInbox();else badge(await api('/api/inbox'))}catch(e){}},8000);
+
+// ---------- messages / calls ----------
+async function loadMsg(){const r=await api('/api/messages');
+  $('#msgbody').innerHTML=r.map(m=>`<tr><td>${when(m.created_at)}</td><td>${esc(m.patient_name||'Staff')}</td><td><span class="pill">${esc(m.kind)}</span></td><td>${esc(m.body)}</td></tr>`).join('')}
+$('#runRem').onclick=async()=>{const r=await api('/api/reminders/run',{method:'POST'});$('#msgres').textContent=`${r.sent} reminder(s) queued`;loadMsg()};
+$('#runRec').onclick=async()=>{const r=await api('/api/recall/run',{method:'POST'});$('#msgres').textContent=`${r.sent} recall message(s) queued`;loadMsg()};
+async function loadCalls(){const r=await api('/api/calls');
+  $('#callbody').innerHTML=r.map(c=>{const t=JSON.parse(c.transcript||'[]');return `<details style="border-bottom:1px solid var(--line);padding:8px 0"><summary><b>${when(c.started_at)}</b> · ${esc(c.channel)} · <span class="pill ${esc(c.outcome)}">${esc(c.outcome)}</span><br><span class="hint">${esc(c.summary)}</span></summary>
+   ${t.map(([w,x])=>`<div style="margin:4px 0 0 12px"><b>${w==='agent'?'AI':'Caller'}:</b> ${esc(x)}</div>`).join('')}</details>`}).join('')||'<p class="hint">No calls yet.</p>'}
+
+// ---------- AI receptionist (voice + chat) ----------
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+let sid=null,mode='voice',busy=false,speaking=false,listening=false,rec=null,handsFree=true;
+const bubble=(cls,t)=>{const d=document.createElement('div');d.className='msg '+cls;d.textContent=t;$('#log').append(d);$('#log').scrollTop=1e9};
+const setStatus=(t,live)=>{$('#stext').textContent=t;document.querySelector('.dot').classList.toggle('live',!!live)};
+function ui(active){$('#callBtn').style.display=$('#chatBtn').style.display=active?'none':'';$('#endBtn').style.display=active?'':'none';
+  $('#txt').disabled=$('#send').disabled=!active;$('#mic').disabled=!active||!SR}
+function speak(text,cb){if(mode!=='voice'||!$('#speakToggle').checked||!('speechSynthesis' in window)){cb&&cb();return}
+  speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(text);u.lang='en-US';speaking=true;setStatus('Speaking…',true);
+  u.onend=u.onerror=()=>{speaking=false;cb&&cb()};speechSynthesis.speak(u)}
+function listen(){if(!SR||!sid||mode!=='voice'||listening||speaking||busy||!handsFree)return;
+  rec=new SR();rec.lang='en-US';rec.interimResults=false;listening=true;setStatus('Listening…',true);
+  rec.onresult=e=>{listening=false;send(e.results[0][0].transcript)};
+  rec.onerror=e=>{listening=false;if(['not-allowed','service-not-allowed'].includes(e.error)){handsFree=false;$('#vnote').textContent='Microphone blocked. Allow mic access or use the text box.'}};
+  rec.onend=()=>{listening=false;if(sid&&!busy&&!speaking)setTimeout(listen,300)};
+  try{rec.start()}catch(e){listening=false}}
+async function start(m){mode=m;handsFree=true;$('#log').innerHTML='';const r=await api('/api/agent/start',{method:'POST',body:{channel:m}});sid=r.session_id;ui(true);bubble('agent',r.reply);
+  $('#vnote').textContent=m==='voice'&&!SR?'Voice input needs Chrome or Edge. You can still type; replies will be spoken.':'';
+  speak(r.reply,()=>{m==='voice'?listen():setStatus('Chat open',true)});if(m==='chat')setStatus('Chat open',true);refresh()}
+async function send(text){text=(text||'').trim();if(!text||!sid||busy)return;busy=true;bubble('me',text);setStatus('Thinking…',true);
+  try{const r=await api('/api/agent/message',{method:'POST',body:{session_id:sid,text}});bubble('agent',r.reply);busy=false;refresh();
+    speak(r.reply,()=>{if(r.done)end();else if(mode==='voice')listen();else setStatus('Chat open',true)})}
+  catch(e){busy=false;bubble('sys','Error: '+e.message)}}
+async function end(){if(!sid)return;const id=sid;sid=null;try{rec&&rec.abort()}catch(e){};speechSynthesis.cancel();listening=speaking=busy=false;
+  const r=await api('/api/agent/end',{method:'POST',body:{session_id:id}});bubble('sys','Call ended. Logged summary: '+r.summary);ui(false);setStatus('Idle',false);refresh()}
+$('#callBtn').onclick=()=>start('voice');$('#chatBtn').onclick=()=>start('chat');$('#endBtn').onclick=end;
+$('#send').onclick=()=>{const v=$('#txt').value;$('#txt').value='';speechSynthesis.cancel();speaking=false;send(v)};
+$('#txt').onkeydown=e=>{if(e.key==='Enter')$('#send').click()};
+$('#mic').onclick=()=>{handsFree=true;speechSynthesis.cancel();speaking=false;listen()};
+function refresh(){if(!document.querySelector('dialog[open]'))load()}
+setInterval(()=>{if(sid)refresh()},6000);
+
+// ---------- boot ----------
+(async()=>{CFG=await api('/api/config');PROV=await api('/api/providers');$('#pname').textContent=CFG.practice;
+  $('#provFilter').innerHTML='<option value="">All providers</option>'+PROV.map(p=>`<option value="${p.id}">${esc(p.name)}</option>`).join('');
+  show((location.hash||'#dash').slice(1).replace(/[^a-z]/g,'')||'dash')})();
+</script>
+<script src="/static/pm.js"></script>
+</body></html>

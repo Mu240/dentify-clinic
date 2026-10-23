@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Book an appointment</title>
+<style>
+:root{--bg:#f4f6fa;--card:#fff;--ink:#0f172a;--mute:#64748b;--line:#e2e8f0;--brand:#2563eb;--ok:#059669;--bad:#dc2626}
+*{box-sizing:border-box}
+body{margin:0;font:16px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--ink)}
+main{max-width:480px;margin:0 auto;padding:20px 16px 48px}
+h1{font-size:22px;margin:8px 0 2px}.sub{color:var(--mute);margin:0 0 18px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:14px}
+label{display:block;font-size:13px;color:var(--mute);margin:12px 0 4px}label:first-child{margin-top:0}
+input,select{width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;font:inherit;background:#fff}
+.slots{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.slot{padding:11px 0;border:1px solid var(--line);border-radius:10px;background:#fff;font:inherit;cursor:pointer}
+.slot.on{background:var(--brand);border-color:var(--brand);color:#fff}
+button.go{width:100%;margin-top:16px;padding:14px;border:0;border-radius:12px;background:var(--brand);color:#fff;font:600 16px system-ui;cursor:pointer}
+button.go:disabled{opacity:.5;cursor:not-allowed}
+.err{color:var(--bad);min-height:1.3em;margin:10px 0 0}.hint{color:var(--mute);font-size:13px}.slots .hint,.slots .err{grid-column:1/-1}
+.done{text-align:center}.done .tick{font-size:44px;color:var(--ok)}
+.hp{position:absolute;left:-9999px;height:0;overflow:hidden}
+</style>
+</head>
+<body>
+<main>
+  <h1 id="pname">Book an appointment</h1>
+  <p class="sub">Pick a time and we'll confirm by text message. Takes about 30 seconds.</p>
+
+  <form id="f" class="card" autocomplete="on">
+    <label for="type">What do you need?</label>
+    <select id="type"></select>
+    <label for="date">Day</label>
+    <input id="date" type="date" required>
+    <label>Available times</label>
+    <div id="slots" class="slots"><span class="hint">Choose a day to see times.</span></div>
+
+    <label for="name">Full name</label>
+    <input id="name" autocomplete="name" required maxlength="80">
+    <label for="phone">Mobile number</label>
+    <input id="phone" type="tel" autocomplete="tel" placeholder="(555) 123-4567" required>
+    <label for="email">Email (we'll send your confirmation here)</label>
+    <input id="email" type="email" autocomplete="email" placeholder="you@gmail.com" required>
+    <div class="hp" aria-hidden="true"><label>Website<input id="website" tabindex="-1" autocomplete="off"></label></div>
+
+    <button class="go" id="go" disabled>Book appointment</button>
+    <p class="err" id="err"></p>
+    <p class="hint">Dental emergency or severe swelling? Please call the office instead.</p>
+  </form>
+
+  <div id="ok" class="card done" style="display:none">
+    <div class="tick">&#10003;</div>
+    <h2 id="okt">You're booked!</h2>
+    <p id="okd"></p>
+    <p class="hint">A confirmation text is on its way.</p>
+  </div>
+</main>
+<script>
+const $=s=>document.querySelector(s);
+const src=new URLSearchParams(location.search).get('src')||'web';
+let chosen=null;
+const pad=n=>String(n).padStart(2,'0');
+const fmt=t=>{const[h,m]=t.split(':').map(Number);return `${h%12||12}:${pad(m)} ${h>=12?'PM':'AM'}`};
+async function j(url,opts){const r=await fetch(url,opts);const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(Array.isArray(d.detail)?'Please check your details':(d.detail||'Something went wrong'));return d}
+
+async function loadSlots(){
+  chosen=null;check();
+  if(!$('#date').value){return}
+  $('#slots').innerHTML='<span class="hint">Loading…</span>';
+  try{
+    const r=await j(`/api/public/availability?date=${$('#date').value}&type=${$('#type').value}`);
+    $('#slots').innerHTML=r.slots.length?r.slots.map(s=>`<button type="button" class="slot" data-t="${s}">${fmt(s)}</button>`).join(''):'<span class="hint">No times that day. Try another day (closed Sundays).</span>';
+  }catch(e){$('#slots').innerHTML=`<span class="err">${e.message}</span>`}
+}
+function check(){$('#go').disabled=!(chosen&&$('#name').value.trim().length>1&&$('#phone').value.replace(/\D/g,'').length>=7&&/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test($('#email').value.trim()))}
+$('#slots').onclick=e=>{const b=e.target.closest('.slot');if(!b)return;
+  document.querySelectorAll('.slot').forEach(x=>x.classList.toggle('on',x===b));chosen=b.dataset.t;check()};
+['type','date'].forEach(id=>$('#'+id).onchange=loadSlots);
+['name','phone','email'].forEach(id=>$('#'+id).oninput=check);
+
+$('#f').onsubmit=async e=>{
+  e.preventDefault();$('#err').textContent='';$('#go').disabled=true;
+  try{
+    const r=await j('/api/public/book',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      name:$('#name').value,phone:$('#phone').value,email:$('#email').value.trim(),type:$('#type').value,
+      start:`${$('#date').value}T${chosen}`,src,website:$('#website').value})});
+    $('#f').style.display='none';$('#ok').style.display='';
+    $('#okd').textContent=r.when?`${r.type} on ${r.when} with ${r.provider}. A confirmation email is on its way to ${$('#email').value.trim()}.`:'Thank you!';
+  }catch(err){$('#err').textContent=err.message;loadSlots()}
+};
+
+(async()=>{
+  const c=await j('/api/public/config');
+  document.title='Book · '+c.practice;$('#pname').textContent='Book at '+c.practice;
+  $('#type').innerHTML=Object.entries(c.types).map(([k,v])=>`<option value="${k}">${v.name} (${v.minutes} min)</option>`).join('');
+  const t=new Date(),min=`${t.getFullYear()}-${pad(t.getMonth()+1)}-${pad(t.getDate())}`;
+  $('#date').min=min;
+})();
+</script>
+</body>
+</html>
